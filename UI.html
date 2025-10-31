@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Recorder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Interview Recorder</h1>
+  <p id="question"></p>
+
+  <video id="preview" autoplay muted></video>
+
+  <div class="controls">
+    <button id="startBtn">⏺ Start Recording</button>
+    <button id="stopBtn" disabled>⏹ Stop</button>
+    <button id="nextBtn" disabled>⏭️ Next Question</button>
+  </div>
+
+  <script>
+    const questions = [
+      "Tell me about yourself.",
+      "Why do you want to join our company?",
+      "Describe a challenging situation you handled.",
+      "What are your strengths and weaknesses?",
+      "Where do you see yourself in 5 years?"
+    ];
+
+    let current = 0;
+    let mediaRecorder;
+    let stream;
+    let chunks = [];
+    const recordedVideos = [];
+
+    const video = document.getElementById('preview');
+    const questionEl = document.getElementById('question');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    async function initCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = stream;
+        updateQuestion();
+      } catch (err) {
+        alert("Error accessing camera/microphone: " + err.message);
+      }
+    }
+
+    function updateQuestion() {
+      questionEl.textContent = `Question ${current + 1}: ${questions[current]}`;
+    }
+
+    startBtn.onclick = () => {
+      chunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = saveVideo;
+      mediaRecorder.start();
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      nextBtn.disabled = true;
+      console.log("Recording started...");
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      nextBtn.disabled = false;
+      console.log("Recording stopped.");
+    };
+
+    function saveVideo() {
+      const blob = new Blob(chunks, { type: "video/webm" });
+      recordedVideos.push(blob);
+      console.log(`Saved video for question ${current + 1}`);
+    }
+
+    nextBtn.onclick = () => {
+      if (current < questions.length - 1) {
+        current++;
+        updateQuestion();
+        nextBtn.disabled = true;
+      } else {
+        alert("Interview finished! Downloading your videos...");
+        stopStream();
+        downloadAllVideos();
+      }
+    };
+
+    function stopStream() {
+      stream.getTracks().forEach(track => track.stop());
+    }
+
+    function downloadAllVideos() {
+      recordedVideos.forEach((blob, i) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `Answer_${i + 1}.webm`;
+        a.click();
+      });
+    }
+
+    initCamera();
+  </script>
+</body>
+</html>

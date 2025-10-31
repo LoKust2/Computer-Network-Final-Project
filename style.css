@@ -1,0 +1,49 @@
+body {
+  font-family: Roboto, Helvetica Bold, sans-serif;
+  background-color: #f2f5f9;
+  text-align: center;
+  padding: 40px;
+}
+
+h1 {
+  color: #333;
+}
+
+#question {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+video {
+  border: 2px solid #333;
+  border-radius: 10px;
+  width: 480px;
+  height: 360px;
+  background: black;
+}
+
+.controls {
+  margin-top: 20px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
