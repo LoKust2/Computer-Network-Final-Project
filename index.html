@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interview Recorder</title>
+</head>
+<body>
+
+<h1>Interview Portal</h1>
+
+<div id="start-screen">
+    <button id="start-btn">Start Interview</button>
+</div>
+
+<div id="question-screen" style="display:none;">
+    <h2 id="question-text"></h2>
+    <video id="preview" autoplay></video>
+    <button id="record-btn">Start Recording</button>
+    <button id="next-btn" disabled>Next Question</button>
+</div>
+
+<div id="finish-screen" style="display:none;">
+    <h2>Interview Completed</h2>
+</div>
+
+<script>
+/* ---------------------
+      CONFIG
+---------------------- */
+const QUESTIONS = [
+    "Tell me about yourself.",
+    "Why do you want this job?",
+    "What is your greatest strength?",
+    "Describe a challenge you faced.",
+    "Where do you see yourself in 5 years?"
+];
+
+let currentIndex = 0;
+let mediaRecorder;
+let recordedChunks = [];
+let stream = null;
+let sessionToken = null;
+
+/* ---------------------
+   HELPER FUNCTIONS
+---------------------- */
+
+// call FastAPI endpoints
+async function apiPost(url, data) {
+    const res = await fetch(url, {
+        method: "POST",
+        body: data instanceof FormData ? data : JSON.stringify(data),
+        headers: data instanceof FormData ? {} : {"Content-Type": "application/json"}
+    });
+    return res.json();
+}
+
+/* ---------------------
+   START INTERVIEW
+---------------------- */
+document.getElementById("start-btn").onclick = async () => {
+
+    // request session from API
+    const res = await apiPost("http://127.0.0.1:8000/session/start", {
+        user: "test_user"
+    });
+
+    sessionToken = res.token;
+
+    document.getElementById("start-screen").style.display = "none";
+    document.getElementById("question-screen").style.display = "block";
+
+    loadQuestion();
+};
+
+/* ---------------------
+    LOAD QUESTION
+---------------------- */
+function loadQuestion() {
+    if (currentIndex >= QUESTIONS.length) return finishInterview();
+
+    document.getElementById("question-text").innerText = QUESTIONS[currentIndex];
+    document.getElementById("next-btn").disabled = true;
+
+    startCamera();
+}
+
+/* ---------------------
+    CAMERA + RECORDING
+---------------------- */
+async function startCamera() {
+    stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+    });
+
+    document.getElementById("preview").srcObject = stream;
+}
+
+document.getElementById("record-btn").onclick = () => {
+    recordedChunks = [];
+
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+
+    mediaRecorder.onstop = uploadVideo;
+
+    mediaRecorder.start();
+    document.getElementById("record-btn").innerText = "Recording...";
+    document.getElementById("record-btn").disabled = true;
+
+    setTimeout(() => {
+        mediaRecorder.stop();
+        document.getElementById("record-btn").innerText = "Start Recording";
+        document.getElementById("record-btn").disabled = false;
+    }, 5000); // 5 sec recording per question
+};
+
+/* ---------------------
+    UPLOAD VIDEO
+---------------------- */
+async function uploadVideo() {
+    const blob = new Blob(recordedChunks, {type: "video/webm"});
+    const form = new FormData();
+    form.append("token", sessionToken);
+    form.append("question_number", currentIndex + 1);
+    form.append("file", blob, `q${currentIndex + 1}.webm`);
+
+    await fetch("http://127.0.0.1:8000/upload-one", {
+        method: "POST",
+        body: form
+    });
+
+    document.getElementById("next-btn").disabled = false;
+}
+
+/* ---------------------
+     NEXT QUESTION
+---------------------- */
+document.getElementById("next-btn").o
